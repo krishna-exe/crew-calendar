@@ -26,6 +26,8 @@ create table public.rooms (
   name text not null check (char_length(name) between 1 and 60),
   invite_code text not null unique default substr(md5(gen_random_uuid()::text), 1, 10),
   created_by uuid not null references public.profiles on delete cascade,
+  -- Text on the daily check-in button; empty means "Check in".
+  checkin_label text not null default '' check (char_length(checkin_label) <= 40),
   created_at timestamptz not null default now()
 );
 

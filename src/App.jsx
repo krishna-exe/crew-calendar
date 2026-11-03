@@ -124,7 +124,7 @@ function SignIn({ joining }) {
       <div className="hero">
         <div className="eyebrow">Shared daily tracker</div>
         <h1>Crew Calendar</h1>
-        <p className="lede">Make a room, invite your friends, and check in every day you do the thing. Keep your streak, and try to turn the whole calendar yellow together.</p>
+        <p className="lede">Make a room, invite your friends, and check in each day you stick to it. Keep your streak going, and try to turn the whole calendar yellow together.</p>
       </div>
       <section className="panel">
         {sent ? (

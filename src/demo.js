@@ -11,8 +11,8 @@ const ago = n => addDays(new Date(), -n)
 const db = {
   profiles: people.map(([id, display_name]) => ({ id, display_name })),
   rooms: [
-    { id: 'room-gym', name: 'Gym before 9am', invite_code: 'gym4ever01', created_by: ME },
-    { id: 'room-read', name: 'Read 20 pages', invite_code: 'readmore22', created_by: 'demo-aisha' },
+    { id: 'room-gym', name: 'Gym before 9am', invite_code: 'gym4ever01', created_by: ME, checkin_label: 'Hit the gym' },
+    { id: 'room-read', name: 'Read 20 pages', invite_code: 'readmore22', created_by: 'demo-aisha', checkin_label: '' },
   ],
   room_members: [
     ...people.map(([id], i) => ({ room_id: 'room-gym', user_id: id, role: i ? 'member' : 'owner', joined_at: ago(45 - i * 3).toISOString() })),
@@ -89,7 +89,7 @@ class Query {
 const rpcs = {
   create_room({ room_name }) {
     const id = 'room-' + Math.random().toString(36).slice(2, 8)
-    db.rooms.push({ id, name: room_name, invite_code: Math.random().toString(36).slice(2, 12), created_by: ME })
+    db.rooms.push({ id, name: room_name, invite_code: Math.random().toString(36).slice(2, 12), created_by: ME, checkin_label: '' })
     db.room_members.push({ room_id: id, user_id: ME, role: 'owner', joined_at: new Date().toISOString() })
     return id
   },

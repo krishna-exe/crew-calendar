@@ -13,7 +13,7 @@ export default function Room({ roomId, me }) {
   const channel = useRef(null)
 
   const loadRoom = useCallback(async () => {
-    const { data } = await supabase.from('rooms').select('id, name, invite_code, created_by').eq('id', roomId).maybeSingle()
+    const { data } = await supabase.from('rooms').select('id, name, invite_code, created_by, checkin_label').eq('id', roomId).maybeSingle()
     setRoom(data ?? null)
   }, [roomId])
 
@@ -124,9 +124,10 @@ export default function Room({ roomId, me }) {
 
         <div className="side">
           <DayPanel sel={sel} ids={ids} joined={joined} me={me} days={days} did={did}
-            name={name} onToggle={toggle} onSaveNote={saveNote} />
+            name={name} buttonLabel={room.checkin_label} onToggle={toggle} onSaveNote={saveNote} />
           <Standings ids={ids} days={days} view={view} name={name} isFull={isFull} />
           <Invite room={room} isOwner={isOwner} onReset={loadRoom} />
+          {isOwner && <RoomSettings room={room} onSaved={loadRoom} />}
           <Members room={room} members={members} me={me} isOwner={isOwner} name={name}
             announce={announce} reload={loadMembers} />
         </div>
@@ -196,14 +197,14 @@ function Calendar({ view, setView, sel, setSel, doneOn, isFull, mine, name }) {
         })}
       </div>
       <div className="legend">
-        <span><i className="sw sw-full" />Whole crew did it</span>
-        <span><i className="sw sw-mine" />You did it</span>
+        <span><i className="sw sw-full" />Whole crew checked in</span>
+        <span><i className="sw sw-mine" />You checked in</span>
       </div>
     </section>
   )
 }
 
-function DayPanel({ sel, ids, joined, me, days, did, name, onToggle, onSaveNote }) {
+function DayPanel({ sel, ids, joined, me, days, did, name, buttonLabel, onToggle, onSaveNote }) {
   const d = parseKey(sel)
   const tk = todayKey()
   const mine = did(me, sel)
@@ -222,7 +223,7 @@ function DayPanel({ sel, ids, joined, me, days, did, name, onToggle, onSaveNote 
       <div className="eyebrow">{label}</div>
       <h3>{d.toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' })}</h3>
       <button className={`big ${mine ? 'done' : ''}`} onClick={onToggle}>
-        {mine ? 'Done ✓ (tap to undo)' : sel === tk ? 'I did it today' : 'I did it this day'}
+        {mine ? `✓ ${buttonLabel || 'Checked in'} · tap to undo` : (buttonLabel || 'Check in')}
       </button>
       {mine && (
         <form className="note-row" onSubmit={e => { e.preventDefault(); onSaveNote(note.trim()) }}>
@@ -317,6 +318,33 @@ function Invite({ room, isOwner, onReset }) {
           {confirmReset ? 'Tap again: the old link will stop working' : 'Reset invite link'}
         </button>
       )}
+    </section>
+  )
+}
+
+function RoomSettings({ room, onSaved }) {
+  const [label, setLabel] = useState(room.checkin_label)
+  const [saved, setSaved] = useState(false)
+  useEffect(() => setLabel(room.checkin_label), [room.checkin_label])
+
+  async function save(e) {
+    e.preventDefault()
+    const v = label.trim()
+    if (v === room.checkin_label) return
+    const { error } = await supabase.from('rooms').update({ checkin_label: v }).eq('id', room.id)
+    if (!error) { setSaved(true); setTimeout(() => setSaved(false), 2000); onSaved() }
+  }
+
+  return (
+    <section className="panel">
+      <div className="eyebrow">Room settings</div>
+      <h3>Check-in button</h3>
+      <p className="muted small">What everyone taps each day. Leave it empty for “Check in”.</p>
+      <form className="note-row" onSubmit={save}>
+        <input id="checkin-label" maxLength={40} placeholder="e.g. Stayed strong, Hit the gym"
+          value={label} onChange={e => setLabel(e.target.value)} />
+        <button>{saved ? 'Saved' : 'Save'}</button>
+      </form>
     </section>
   )
 }
