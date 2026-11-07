@@ -24,3 +24,5 @@ dist-ssr
 *.sw?
 .env.local
 .vercel
+scripts/__pycache__/
+supabase/.temp/
