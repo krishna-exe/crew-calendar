@@ -1,4 +1,5 @@
--- Crew Calendar schema. Paste into Supabase: SQL Editor → New query → Run.
+-- Crew Calendar base schema. Paste into Supabase: SQL Editor → New query → Run.
+-- Then run the files in supabase/migrations in order.
 
 -- People ---------------------------------------------------------------
 create table public.profiles (

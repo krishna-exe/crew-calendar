@@ -11,8 +11,8 @@ const ago = n => addDays(new Date(), -n)
 const db = {
   profiles: people.map(([id, display_name]) => ({ id, display_name })),
   rooms: [
-    { id: 'room-gym', name: 'Gym before 9am', invite_code: 'gym4ever01', created_by: ME, checkin_label: 'Hit the gym' },
-    { id: 'room-read', name: 'Read 20 pages', invite_code: 'readmore22', created_by: 'demo-aisha', checkin_label: '' },
+    { id: 'room-gym', name: 'Gym before 9am', invite_code: 'gym4ever01', created_by: ME, checkin_label: 'Hit the gym', rest_days: [0] },
+    { id: 'room-read', name: 'Read 20 pages', invite_code: 'readmore22', created_by: 'demo-aisha', checkin_label: '', rest_days: [] },
   ],
   room_members: [
     ...people.map(([id], i) => ({ room_id: 'room-gym', user_id: id, role: i ? 'member' : 'owner', joined_at: ago(45 - i * 3).toISOString() })),
@@ -20,6 +20,7 @@ const db = {
     { room_id: 'room-read', user_id: ME, role: 'member', joined_at: ago(20).toISOString() },
   ],
   checkins: [],
+  reactions: [],
 }
 // Deterministic "random" history, with the last few days all done so the crew streak shows.
 const notes = ['Leg day', 'Quick 30 min', 'PR on deadlift!', 'Cardio only', '', '', '']
@@ -33,11 +34,20 @@ db.room_members.forEach((m, mi) => {
   }
 })
 
+db.reactions.push(
+  { room_id: 'room-gym', checkin_user_id: 'demo-rohan', day: keyOf(new Date()), user_id: 'demo-aisha', emoji: '🔥' },
+  { room_id: 'room-gym', checkin_user_id: ME, day: keyOf(ago(1)), user_id: 'demo-rohan', emoji: '💪' },
+)
+
 const embeds = {
   profiles: row => db.profiles.find(p => p.id === row.user_id),
   rooms: row => db.rooms.find(r => r.id === row.room_id),
 }
-const key = { checkins: ['room_id', 'user_id', 'day'], room_members: ['room_id', 'user_id'] }
+const key = {
+  checkins: ['room_id', 'user_id', 'day'],
+  room_members: ['room_id', 'user_id'],
+  reactions: ['room_id', 'checkin_user_id', 'day', 'user_id', 'emoji'],
+}
 
 class Query {
   constructor(table) { this.table = table; this.filters = []; this.op = 'select' }
@@ -65,6 +75,9 @@ class Query {
     if (this.op === 'delete') {
       const gone = rows.filter(hit)
       db[this.table] = rows.filter(r => !hit(r))
+      if (this.table === 'checkins') gone.forEach(g => {
+        db.reactions = db.reactions.filter(r => !(r.room_id === g.room_id && r.checkin_user_id === g.user_id && r.day === g.day))
+      })
       if (this.table === 'rooms') gone.forEach(g => {
         db.room_members = db.room_members.filter(m => m.room_id !== g.id)
         db.checkins = db.checkins.filter(c => c.room_id !== g.id)
@@ -86,10 +99,12 @@ class Query {
   }
 }
 
+const reminders = {}
+
 const rpcs = {
   create_room({ room_name }) {
     const id = 'room-' + Math.random().toString(36).slice(2, 8)
-    db.rooms.push({ id, name: room_name, invite_code: Math.random().toString(36).slice(2, 12), created_by: ME, checkin_label: '' })
+    db.rooms.push({ id, name: room_name, invite_code: Math.random().toString(36).slice(2, 12), created_by: ME, checkin_label: '', rest_days: [] })
     db.room_members.push({ room_id: id, user_id: ME, role: 'owner', joined_at: new Date().toISOString() })
     return id
   },
@@ -105,6 +120,9 @@ const rpcs = {
     db.room_members.push({ room_id: r.id, user_id: ME, role: 'member', joined_at: new Date().toISOString() })
     return r.id
   },
+  get_reminder_hour({ sub_endpoint }) { return reminders[sub_endpoint] ?? null },
+  set_reminder({ sub_endpoint, hour }) { reminders[sub_endpoint] = hour },
+  clear_reminder({ sub_endpoint }) { delete reminders[sub_endpoint] },
   reset_invite({ r }) {
     const room = db.rooms.find(x => x.id === r)
     room.invite_code = Math.random().toString(36).slice(2, 12)

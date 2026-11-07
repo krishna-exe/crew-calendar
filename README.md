@@ -9,7 +9,7 @@ Built with Vite + React, and Supabase for sign-in (email magic links), the datab
 ## 1. Create the Supabase project (free tier is fine)
 
 1. Go to <https://supabase.com>, create a project.
-2. **SQL Editor → New query**: paste all of `supabase/schema.sql` and click **Run**.
+2. **SQL Editor → New query**: paste all of `supabase/schema.sql` and click **Run**, then do the same for each file in `supabase/migrations`, in order.
 3. **Project Settings → API**: copy the *Project URL* and the *anon public* key.
 4. **Authentication → URL Configuration**:
    - *Site URL*: `http://localhost:5173` for now (change to your real URL after deploying).
@@ -32,11 +32,29 @@ npm run dev                   # http://localhost:5173
 
 Netlify or Cloudflare Pages work the same way: build command `npm run build`, output folder `dist`.
 
+## Reminders (optional)
+
+Daily reminders use web push and need a few one-time steps. Without `VITE_VAPID_PUBLIC_KEY`, the site simply hides them.
+
+```bash
+python3 scripts/setup_reminders.py    # keys, function secrets, vault entries
+SUPABASE_ACCESS_TOKEN=... npx supabase functions deploy send-reminders --no-verify-jwt --project-ref <ref>
+```
+
+Then add `VITE_VAPID_PUBLIC_KEY` to your host's env vars and redeploy.
+
+## Tests
+
+- `npm test`: unit tests for streaks and reactions.
+- `python3 scripts/test_migrations.py`: runs the migrations and access rules on your project in a transaction that always rolls back.
+
 ## How it works
 
 - **Sign in**: email magic link, no passwords. Your name defaults to the part of your email before the `@`; click it in the top bar to change it.
 - **Rooms**: anyone signed in can create a room and becomes its owner. Owners can rename the room, reset the invite link, remove members, and delete the room.
 - **Invites**: each room has a link like `https://your-site/#/join/ab12cd34ef`. Opening it asks the friend to sign in, shows the room, and lets them join. Resetting the link kills the old one.
+- **Rest days**: owners pick weekdays that don't break a streak. A rest day that was skipped neither adds to a streak nor ends it; one that was checked in still counts.
+- **Reactions**: friends can react to each other's check-ins. Undoing a check-in removes its reactions.
 - **Privacy**: row-level security in Postgres means you only see rooms you're in, the people in them, and their check-ins. You can only add or remove your own check-ins, and not for future days.
 
 ## Notes

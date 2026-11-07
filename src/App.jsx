@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react'
 import { supabase, configured } from './supabase'
 import Rooms from './Rooms'
 import Join from './Join'
-import Room from './Room'
+import Room from './room/Room'
+import { clearReminder, remindersSupported } from './reminders'
 
 const PENDING_JOIN = 'crew-calendar:pending-join'
 
@@ -80,6 +81,12 @@ function TopBar({ me }) {
     if (!error) setName(v)
   }
 
+  // A shared device shouldn't keep reminding the person who just left.
+  async function signOut() {
+    if (remindersSupported()) await clearReminder().catch(() => {})
+    await supabase.auth.signOut()
+  }
+
   return (
     <nav className="topbar">
       <a href="#/" className="brand">Crew Calendar</a>
@@ -95,7 +102,7 @@ function TopBar({ me }) {
             {name || 'Set your name'}
           </button>
         )}
-        <button className="ghost" onClick={() => supabase.auth.signOut()}>Sign out</button>
+        <button className="ghost" onClick={signOut}>Sign out</button>
       </div>
     </nav>
   )
